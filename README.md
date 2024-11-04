@@ -1,7 +1,7 @@
 # azure-aks-terraform-github-actions-helm
 
 ## Overview
-This project involves infrastructure provisioning using **Terraform** and application deployment with **Helm** on **Azure Kubernetes Service (AKS)**. The project is structured to separate the management of infrastructure and application deployment, with clear environment-specific configurations for dev and prod environments.
+This production ready project involves infrastructure provisioning using **Terraform** and application deployment with **Helm** on **Azure Kubernetes Service (AKS)**. The project is structured to separate the management of infrastructure and application deployment, with clear environment-specific configurations for dev and prod environments.
 
 ## Directory Structure
 
@@ -14,9 +14,6 @@ This directory contains the CI/CD pipeline configuration files for both infrastr
 ### 2. Modules Directory
 This directory holds the Terraform modules for deploying specific infrastructure components.
 
-- **acr/**: Deploys Azure Container Registry (ACR) to store Docker images.
-- **aks/**: Deploys Azure Kubernetes Service (AKS) for running the containerized web app.
-- **networking/**: Configures Virtual Networks (VNets) and related networking resources.
 - **storage/**: Provisions Azure Storage resources for application data or other infrastructure needs.
 
 ### 3. Deployment Directory
@@ -138,21 +135,6 @@ azure-aks-terraform-github-actions/
 │   │   ├── providers.tf              # Provider configuration for Azure (azurerm)
 │   │   ├── versions.tf               # Terraform version and provider version constraints
 │   └── modules/
-│       ├── acr/
-│       │   ├── locals.tf             # Local variables for ACR
-│       │   ├── main.tf               # ACR module configuration
-│       │   ├── outputs.tf            # Outputs related to ACR
-│       │   ├── variables.tf          # Variables for ACR module
-│       ├── aks/
-│       │   ├── locals.tf             # Local variables for AKS
-│       │   ├── main.tf               # AKS module configuration
-│       │   ├── outputs.tf            # Outputs related to AKS
-│       │   ├── variables.tf          # Variables for AKS module
-│       ├── networking/
-│       │   ├── locals.tf             # Local variables for Networking
-│       │   ├── main.tf               # Networking configuration (VNet, subnets, etc.)
-│       │   ├── outputs.tf            # Outputs related to Networking
-│       │   └── variables.tf          # Variables for Networking
 │       └── storage/
 │           ├── locals.tf             # Local variables for Storage
 │           ├── main.tf               # Azure Blob Storage and Terraform backend configuration

@@ -20,8 +20,8 @@ run_terraform() {
     fi
 
     # Plan with the specified environment variable
-    echo "Running Terraform plan for environment: $TF_VAR_environment"
-    terraform plan -var-file="./$TF_VAR_environment.tfvars" || return 1
+    # echo "Running Terraform plan for environment: $TF_VAR_environment"
+    # terraform plan -var-file="./$TF_VAR_environment.tfvars" || return 1
 
     # Apply with the specified environment variable and auto-approve
     echo "Applying Terraform configuration for environment: $TF_VAR_environment"
