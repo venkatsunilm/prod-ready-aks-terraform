@@ -28,6 +28,8 @@ module "avm-ptn-aks-production" {
   name                = module.naming.kubernetes_cluster.name_unique
   resource_group_name = azurerm_resource_group.this.name
 
+  rbac_aad_admin_group_object_ids = ["11111111-2222-3333-4444-555555555555"]
+  version                         = "0.2.0"
   network = {
     name                = module.avm_res_network_virtualnetwork.name
     resource_group_name = azurerm_resource_group.this.name
@@ -46,23 +48,24 @@ module "avm-ptn-aks-production" {
   }
 
   location = "westeurope" # Hardcoded because we have to test in a region with availability zones
+
   node_pools = {
     workload = {
       name                 = "workloadworkload"
-      vm_size              = "Standard_D2d_v5"
+      vm_size              = "Standard_B2s"
       orchestrator_version = "1.28"
       max_count            = 3
-      min_count            = 2
+      min_count            = 1
       os_sku               = "Ubuntu"
       mode                 = "User"
       os_disk_size_gb      = 128
     },
     ingress = {
       name                 = "ingress"
-      vm_size              = "Standard_D2d_v5"
+      vm_size              = "Standard_B2s"
       orchestrator_version = "1.28"
-      max_count            = 4
-      min_count            = 2
+      max_count            = 2
+      min_count            = 1
       os_sku               = "Ubuntu"
       mode                 = "User"
       os_disk_size_gb      = 128
