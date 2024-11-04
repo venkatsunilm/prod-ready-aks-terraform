@@ -1,0 +1,87 @@
+name: Deploy Web App
+
+on:
+  workflow_run:
+    workflows: ["Deploy Infrastructure"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        environment: ['dev', 'prod']
+        exclude:
+          - environment: ${{ github.ref != 'refs/heads/main' && 'prod' }}
+
+    environment:
+      name: ${{ matrix.environment }}
+
+    env:
+      IMAGE_VERSION_APP: latest
+      KUBECONFIG: /home/runner/.kube/config
+      KUBE_CONFIG_PATH: /home/runner/.kube/config
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      TF_VAR_environment:  ${{ matrix.environment }}
+      TF_VAR_subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        id: download-artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          name: infra-outputs-${{ matrix.environment }} 
+          check_artifacts: true
+          search_artifacts: false
+          workflow: deploy-infra-cicd.yml
+          path: ./artifacts
+
+      - name: Read JSON and Set Variables
+        run: |
+          INFRA_OUTPUTS=$(cat ./artifacts/infrastructure-outputs.json)
+          export AKS_CLUSTER_NAME=$(echo "$INFRA_OUTPUTS" | jq -r '.AKS_CLUSTER_NAME')
+          export AKS_RESOURCE_GROUP=$(echo "$INFRA_OUTPUTS" | jq -r '.AKS_RESOURCE_GROUP')
+          export ACR_REGISTRY_NAME=$(echo "$INFRA_OUTPUTS" | jq -r '.ACR_REGISTRY_NAME')
+
+          echo "AKS_CLUSTER_NAME=$AKS_CLUSTER_NAME" >> $GITHUB_ENV
+          echo "AKS_RESOURCE_GROUP=$AKS_RESOURCE_GROUP" >> $GITHUB_ENV
+          echo "ACR_REGISTRY_NAME=$ACR_REGISTRY_NAME" >> $GITHUB_ENV
+
+      - name: Set Up Kubernetes and Azure
+        uses: ./.github/actions/k8s-setup-action
+        with:
+          aks_cluster_name: $AKS_CLUSTER_NAME
+          aks_resource_group: $AKS_RESOURCE_GROUP
+          acr_registry_name: $ACR_REGISTRY_NAME
+          azure_credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          arm_client_id: $ARM_CLIENT_ID
+          arm_subscription_id: $ARM_SUBSCRIPTION_ID
+          environment: ${{ matrix.environment }}
+
+      - name: Invoke Docker Build & Push Action
+        uses: ./.github/actions/docker-action
+        with:
+          image_name: ${{ vars.DOCKER_IMAGE_NAME_APP }}
+          registry_name: $ACR_REGISTRY_NAME
+          version: $IMAGE_VERSION_APP
+          working-directory: data-upload-app/src
+
+      - name: Invoke Terraform Composite Action for Helm
+        uses: ./.github/actions/terraform-action
+        with:
+          environment:  ${{ matrix.environment }} 
+          working-directory: ./data-upload-app/deployment
+          backend-state-name: application

@@ -1,0 +1,61 @@
+name: "Kubernetes Setup Action"
+description: "Reusable action for setting up Kubernetes with AKS"
+
+inputs:
+  aks_cluster_name:
+    description: "Name of the AKS cluster"
+    required: true
+  aks_resource_group:
+    description: "Resource group of the AKS cluster"
+    required: true
+  acr_registry_name:
+    description: "ACR registry name"
+    required: true
+  azure_credentials:
+    description: "Azure credentials"
+    required: true
+  arm_client_id:
+    description: "Azure client id"
+    required: true
+  arm_subscription_id:
+    description: "Azure subscription id"
+    required: true
+  environment:
+    description: "current environment"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v4
+      with:
+        version: 'latest'
+
+    - name: Log in to Azure
+      uses: azure/login@v2
+      with:
+        creds: ${{ inputs.azure_credentials }}
+
+    - name: ACR Login
+      run: az acr login --name ${{ inputs.acr_registry_name }}
+      shell: bash
+
+    - name: Get AKS Credentials
+      run: |
+        az aks get-credentials --resource-group ${{ inputs.aks_resource_group }} --name ${{ inputs.aks_cluster_name }} --admin --overwrite-existing
+      shell: bash
+
+    - name: Print Kubernetes context and check nodes
+      run: |
+        kubectl config current-context
+        kubectl get nodes
+        kubectl get services
+      shell: bash
+
+    - name: Attach ACR to AKS
+      run: |
+        # az role assignment create --assignee ${{ inputs.arm_client_id }} --role "User Access Administrator" --scope "/subscriptions/${{ inputs.arm_subscription_id }}/resourceGroups/rg-acr-${{ inputs.environment }}" 
+        az aks update -n ${{ inputs.aks_cluster_name }} -g ${{ inputs.aks_resource_group }} --attach-acr ${{ inputs.acr_registry_name }}
+      shell: bash
+

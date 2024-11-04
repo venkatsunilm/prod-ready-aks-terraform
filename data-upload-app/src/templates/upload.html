@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Upload Data to Resoniks</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      input[type="file"],
+      input[type="text"],
+      input[type="submit"],
+      button {
+        width: 100%;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+      input[type="text"] {
+        width: 100%;
+      }
+      #message {
+        display: none;
+        padding: 10px;
+        margin-top: 10px;
+        border: 1px solid #ddd;
+      }
+      #message.uploading {
+        display: block;
+        color: #0056b3;
+        border-color: #0056b3;
+      }
+      #message.success {
+        display: block;
+        color: #28a745;
+        border-color: #28a745;
+      }
+      #message.error {
+        display: block;
+        color: #dc3545;
+        border-color: #dc3545;
+      }
+    </style>
+    <script>
+      let controller;
+      const CHUNK_SIZE = 1000 * 1024 * 1024; // 1GB chunk size
+
+      async function uploadChunk(file, start, end, sas_token, chunkIndex) {
+        const chunk = file.slice(start, end);
+        const formData = new FormData();
+        formData.append('file', chunk);
+        formData.append('sas_token', sas_token);
+        formData.append('chunk_index', chunkIndex);
+        formData.append('total_chunks', Math.ceil(file.size / CHUNK_SIZE));
+        formData.append('filename', file.name); // Include the original filename
+
+        try {
+          const response = await fetch('/upload_chunk', {
+            method: 'POST',
+            body: formData,
+          });
+
+          try {
+            const result = await response.json();
+            if (result.status !== 'success') {
+              throw new Error(result.message);
+            }
+            return result;
+          } catch (jsonError) {
+            console.error("Failed to parse JSON response: ", jsonError);
+            throw new Error("Unexpected response from server. Please check the logs.");
+          }
+        } catch (error) {
+          console.error("Failed to upload chunk: ", error);
+          throw error;
+        }
+      }
+
+      function formatTime(date) {
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+
+        return `${hours}:${minutes}`;
+      }
+
+      function getDuration(start, end) {
+        const duration = (end - start) / 1000 / 60; // Convert milliseconds to minutes
+        return duration.toFixed(2);
+      }
+
+      function formatFileSize(bytes) {
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        if (bytes === 0) return '0 Byte';
+        const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+      }
+
+      async function uploadFile(event) {
+        event.preventDefault();
+
+        const file = document.getElementById('file').files[0];
+        const sas_token = document.getElementById('sas_token').value;
+        const messageElement = document.getElementById('message');
+        const startTime = new Date(); // Start time
+
+        if (!file || !sas_token) {
+          messageElement.textContent = 'File and SAS token are required';
+          messageElement.className = 'error';
+          return;
+        }
+
+        messageElement.textContent = `Uploading... Started at: ${formatTime(startTime)}`;
+        messageElement.className = 'uploading';
+
+        try {
+          let chunkIndex = 0;
+          for (let start = 0; start < file.size; start += CHUNK_SIZE) {
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const result = await uploadChunk(file, start, end, sas_token, chunkIndex);
+            chunkIndex++;
+          }
+
+          const endTime = new Date(); // End time
+          const duration = getDuration(startTime, endTime);
+          const fileSize = formatFileSize(file.size);
+
+          messageElement.innerHTML = `File uploaded successfully!<br>`;
+          messageElement.innerHTML += `File size: ${fileSize}<br>`;
+          messageElement.innerHTML += `Started at: ${formatTime(startTime)}<br>`;
+          messageElement.innerHTML += `Ended at: ${formatTime(endTime)}<br>`;
+          messageElement.innerHTML += `Duration: ${duration} minutes`;
+          messageElement.className = 'success';
+
+        } catch (error) {
+          messageElement.textContent = `Error: ${error.message}`;
+          messageElement.className = 'error';
+        }
+      }
+
+      function cancelUpload() {
+        if (controller) {
+          controller.abort();
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Upload Data to Resoniks</h1>
+      <form onsubmit="uploadFile(event)">
+        <div class="form-group">
+          <label for="file">Select file:</label>
+          <input type="file" name="file" id="file">
+        </div>
+        <div class="form-group">
+          <label for="sas_token">Enter SAS token:</label>
+          <input type="text" name="sas_token" id="sas_token">
+        </div>
+        <div class="form-group">
+          <input type="submit" value="Upload">
+        </div>
+        <div class="form-group">
+          <button type="button" onclick="cancelUpload()">Cancel Upload</button>
+        </div>
+      </form>
+      <div id="message"></div>
+    </div>
+  </body>
+</html>

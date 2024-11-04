@@ -1,0 +1,11 @@
+name: app
+
+environment: dev
+
+replicas: 1
+
+image:
+  repository: venkatsunilmdev.azurecr.io
+  name: data-upload-app
+  tag: "latest"
+  pullPolicy: IfNotPresent

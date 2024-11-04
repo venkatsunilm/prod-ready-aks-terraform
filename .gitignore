@@ -1,0 +1,49 @@
+# Local .terraform directories
+.terraform/
+.terraform.lock.hcl
+
+# Terraform state files
+*.tfstate
+*.tfstate.backup
+
+# Crash log files
+crash.log
+
+# Sensitive variable files
+*.tfvars.json
+
+# Ignore override files as they are usually not checked in
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Example files for users to copy and modify locally
+example.tfvars
+
+# Ignore sensitive JSON files
+*.json
+
+# Ignore logs, temp files, and system files
+*.log
+*.swp
+*.bak
+*.tmp
+*.DS_Store
+Thumbs.db
+
+# Ignore Python virtual environments
+venv/
+.env/
+
+# Ignore local credentials and configuration files
+.terraformrc
+.terraform.d/
+
+# Ignore Kubectl file
+kubectl
+*.terraform.tfstate.lock.info
+.env
+helper/scripts/0_local_env_setup.sh
+helper/scripts/tf_backend_storage.sh
+# helper/scripts/git_add_amend_pushf.sh

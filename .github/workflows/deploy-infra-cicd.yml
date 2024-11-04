@@ -1,0 +1,67 @@
+name: Deploy Infrastructure
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  
+  push:
+    branches:
+      - hotfix*
+      - feat_*
+
+jobs:
+  deploy-infrastructure:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        environment: ['dev', 'prod']
+        exclude:
+          - environment: ${{ github.base_ref != 'main' && 'prod' }}
+
+    environment:
+      name: "${{ matrix.environment }}"
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      TF_VAR_environment: ${{ matrix.environment }}
+      TF_VAR_subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Invoke Terraform Composite Action
+        uses: ./.github/actions/terraform-action
+        with:
+          environment: ${{ matrix.environment }}
+          working-directory: ./azure-platform/deployment
+          backend-state-name: infrastructure
+    
+
+      - name: Capture Outputs and Save as JSON
+        run: |
+          AKS_CLUSTER_NAME=$(terraform output -raw aks_cluster_name)
+          AKS_RESOURCE_GROUP=$(terraform output -raw aks_rg_name)
+          ACR_REGISTRY_NAME=$(terraform output -raw acr_registry_name)
+
+          # Create a JSON file with the outputs
+          echo '{
+            "AKS_CLUSTER_NAME": "'$AKS_CLUSTER_NAME'",
+            "AKS_RESOURCE_GROUP": "'$AKS_RESOURCE_GROUP'",
+            "ACR_REGISTRY_NAME": "'$ACR_REGISTRY_NAME'",
+            "TF_VAR_environment": "'${{ matrix.environment }}'"
+          }' > ${{ github.workspace }}/infrastructure-outputs.json
+        working-directory: azure-platform/deployment
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: infra-outputs-${{ matrix.environment }}
+          path: ${{ github.workspace }}/infrastructure-outputs.json

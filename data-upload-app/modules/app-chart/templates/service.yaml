@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.name }}
+  labels:
+    service: {{ .Values.name }}
+spec:
+  selector:
+    app: {{ .Values.name }}
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8000 # The port your app listens on inside the container
+      protocol: TCP
